@@ -218,8 +218,14 @@ class OIDCProxy(OAuthProxy):
         client_storage: AsyncKeyValue | None = None,
         # JWT and encryption keys
         jwt_signing_key: str | bytes | None = None,
+        # PKCE configuration
+        forward_pkce: bool = True,
         # Token validation configuration
         token_endpoint_auth_method: str | None = None,
+        # Extra parameters to forward to authorization endpoint
+        extra_authorize_params: dict[str, str] | None = None,
+        # Extra parameters to forward to token endpoint
+        extra_token_params: dict[str, str] | None = None,
         # Consent screen configuration
         require_authorization_consent: bool = True,
     ) -> None:
@@ -328,17 +334,15 @@ class OIDCProxy(OAuthProxy):
             "allowed_client_redirect_uris": allowed_client_redirect_uris,
             "client_storage": client_storage,
             "jwt_signing_key": jwt_signing_key,
+            "forward_pkce": forward_pkce,
             "token_endpoint_auth_method": token_endpoint_auth_method,
+            "extra_authorize_params": extra_authorize_params,
+            "extra_token_params": extra_token_params,
             "require_authorization_consent": require_authorization_consent,
         }
 
         if redirect_path:
             init_kwargs["redirect_path"] = redirect_path
-
-        if audience:
-            extra_params = {"audience": audience}
-            init_kwargs["extra_authorize_params"] = extra_params
-            init_kwargs["extra_token_params"] = extra_params
 
         super().__init__(**init_kwargs)  # ty: ignore[invalid-argument-type]
 
