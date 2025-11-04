@@ -13,9 +13,12 @@ from pydantic.networks import AnyUrl
 from fastmcp.experimental.utilities.openapi import HTTPRoute
 from fastmcp.experimental.utilities.openapi.director import RequestDirector
 from fastmcp.resources import Resource, ResourceTemplate
+from fastmcp.server.auth.auth import AuthProvider
+from fastmcp.server.auth.oauth_proxy import OAuthProxy
 from fastmcp.server.dependencies import get_http_headers
 from fastmcp.tools.tool import Tool, ToolResult
 from fastmcp.utilities.logging import get_logger
+from fastmcp.utilities.types import NotSetT
 
 if TYPE_CHECKING:
     from fastmcp.server import Context
@@ -39,6 +42,7 @@ class OpenAPITool(Tool):
         timeout: float | None = None,
         annotations: ToolAnnotations | None = None,
         serializer: Callable[[Any], str] | None = None,
+        auth: AuthProvider | NotSetT | None = None,
     ):
         super().__init__(
             name=name,
@@ -53,6 +57,7 @@ class OpenAPITool(Tool):
         self._route = route
         self._director = director
         self._timeout = timeout
+        self._auth = auth
 
     def __repr__(self) -> str:
         """Custom representation to prevent recursion errors when printing."""
@@ -101,6 +106,23 @@ class OpenAPITool(Tool):
                     # Create new headers from mcp_headers
                     for key, value in mcp_headers.items():
                         request.headers[key] = value
+
+            if self._auth and isinstance(self._auth, OAuthProxy):
+                mcp_auth = mcp_headers.get("authorization", "")
+                mcp_token = mcp_auth.replace("Bearer ", "")
+                logger.debug(f"run - mcp_token={mcp_token}")
+
+                access_token_set = await self._auth.load_access_token(mcp_token)
+                if access_token_set is not None:
+                    access_token = access_token_set.token
+                else:
+                    access_token = None
+                logger.debug(f"run - load access_token={access_token}")
+
+                if access_token is not None:
+                    request.headers["Authorization"] = f"Bearer {access_token}"
+                    logger.debug(f"run - added Authorization header")
+
             # print logger
             logger.debug(f"run - sending request; headers: {request.headers}")
 

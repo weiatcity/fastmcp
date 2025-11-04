@@ -296,6 +296,7 @@ class FastMCPOpenAPI(FastMCP):
             output_schema=output_schema,
             tags=set(route.tags or []) | tags,
             timeout=self._timeout,
+            auth=self.auth,
         )
 
         # Call component_fn if provided
